@@ -58,6 +58,7 @@ where
 #[cfg(test)]
 const TERA: usize = 1024 * 1024 * 1024 * 1024;
 
+/// For testing the call over FFI (no difference).
 #[cfg(test)]
 #[no_mangle]
 #[allow(improper_ctypes_definitions)]
@@ -134,6 +135,9 @@ mod tests {
         // cat /sys/kernel/mm/transparent_hugepage/enabled
         // always [madvise] never
         // ```
+        //
+        // See also
+        // https://stackoverflow.com/questions/71946484/why-is-vec0-super-large-number-so-memory-efficient-when-the-default-value.
 
         u8s[TERA - 1] = 1;
 
