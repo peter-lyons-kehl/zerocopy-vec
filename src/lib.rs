@@ -54,6 +54,30 @@ where
     }
 }
 
+// NOT fallible - but Linux VM overcommit-friendly
+macro_rules! vec_zeroed {
+    ($T: ty; $len_t: expr) => {
+        {
+            const align: ::core::primitive::usize = ::core::mem::align_of::<$T>();
+            const size_t: ::core::primitive::usize = ::core::mem::size_of::<$T>();
+
+            const size_primitive: ::core::primitive::usize = size_t/align * $len_t;
+            unsafe {
+                match(align) {
+                    0  => ::core::mem::transmute::<Vec<()>, Vec<$T>>(::alloc::vec![(); size_primitive]), // Unsure if this is lazily allocated by OS - do TEST!
+                    1  => ::core::mem::transmute::<Vec<u8>, Vec<$T>>(::alloc::vec![0u8; size_primitive]),
+                    2  => ::core::mem::transmute::<Vec<u16>, Vec<$T>>(::alloc::vec![0u16; size_primitive]),
+                    4  => ::core::mem::transmute::<Vec<u32>, Vec<$T>>(::alloc::vec![0u32; size_primitive]),
+                    8  => ::core::mem::transmute::<Vec<u64>, Vec<$T>>(::alloc::vec![0u64; size_primitive]),
+                    16 => ::core::mem::transmute::<Vec<u128>, Vec<$T>>(::alloc::vec![0u128; size_primitive]),
+                    other => unreachable!("Unsupported alignment: {}", other)
+                }
+            }
+        }
+    };
+}
+
+//--------
 // Test-only. It's at the top level, so that `bytes()` can be at top level, too.`
 #[cfg(test)]
 const TERA: usize = 1024 * 1024 * 1024 * 1024;
@@ -159,5 +183,21 @@ mod tests {
         // Calling through FFI doesn't change anything.
         let bytes = bytes_extern();
         hint::black_box(bytes[TERA - 1]);
+    }
+
+    #[test]
+    fn vec_zeroed() {
+        let mut u16s = vec_zeroed![u16; TERA];
+        u16s[TERA - 1] = 2;
+
+        let read = u16s[TERA - 1];
+        // OK:
+        hint::black_box(u16s[TERA - 1]);
+
+        // The following runs out of memory - even without black_box:
+        if false {
+            extern crate std;
+            std::println!("The modified word: {read}.");
+        }
     }
 }
