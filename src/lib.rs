@@ -209,7 +209,13 @@ mod tests {
             second: u8,
         }
 
-        let mut ses: Vec<S> = vec![Default::default(); TERA];
+        // Either of the following is OK:
+        let mut ses: Vec<S> = if true {
+            vec![Default::default(); TERA]
+        } else {
+            vec![S::default(); TERA]
+        };
+        
         ses[TERA - 1] = S {
             first: 1,
             second: 2,
