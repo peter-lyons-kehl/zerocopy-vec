@@ -36,14 +36,17 @@ impl<T> VecZeroed for Vec<T>
 where
     T: FromZeros,
 {
+    #[inline]
     fn extend_zeroed(&mut self, additional: usize) -> Result<(), AllocError> {
         <T as FromZeros>::extend_vec_zeroed(self, additional)
     }
 
+    #[inline]
     fn insert_zeroed(&mut self, position: usize, additional: usize) -> Result<(), AllocError> {
         <T as FromZeros>::insert_vec_zeroed(self, position, additional)
     }
 
+    #[inline]
     fn new_zeroed(len: usize) -> Result<Self, AllocError> {
         <T as FromZeros>::new_vec_zeroed(len)
     }
@@ -215,7 +218,7 @@ mod tests {
         } else {
             vec![S::default(); TERA]
         };
-        
+
         ses[TERA - 1] = S {
             first: 1,
             second: 2,
