@@ -84,6 +84,8 @@ macro_rules! vec_zeroed {
 }
 
 //--------
+// If used as number of bytes, it's 1TB.
+//
 // Test-only. It's at the top level, so that `bytes()` can be at top level, too.`
 #[cfg(test)]
 const TERA: usize = 1024 * 1024 * 1024 * 1024;
