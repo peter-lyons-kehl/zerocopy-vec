@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn new_zeroed() -> Result<(), AllocError> {
-        let u8s = Vec::<u8>::new_zeroed(1_000_000_000_000)?;
+        let u8s = Vec::<u8>::new_zeroed(TERA)?;
         // With the following it fails:
         if false {
             hint::black_box(u8s);
