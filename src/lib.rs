@@ -200,4 +200,24 @@ mod tests {
             std::println!("The modified word: {read}.");
         }
     }
+
+    #[test]
+    fn vec_default() {
+        #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        struct S {
+            first: u8,
+            second: u8,
+        }
+
+        let mut ses: Vec<S> = vec![Default::default(); TERA];
+        ses[TERA - 1] = S {
+            first: 1,
+            second: 2,
+        };
+        hint::black_box(ses[TERA - 1]);
+        if false {
+            extern crate std;
+            std::println!("The modified word: {:?}.", ses[TERA - 1]);
+        }
+    }
 }
