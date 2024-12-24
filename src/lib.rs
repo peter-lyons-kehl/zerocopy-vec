@@ -54,15 +54,37 @@ where
     }
 }
 
+// Test-only. It's at the top level, so that `bytes()` can be at top level, too.`
+#[cfg(test)]
+const TERA: usize = 1024 * 1024 * 1024 * 1024;
+
+#[cfg(test)]
+#[no_mangle]
+#[allow(improper_ctypes_definitions)]
+pub extern "C" fn bytes() -> Vec<u8> {
+    extern crate alloc;
+    use alloc::vec;
+
+    vec![0u8; TERA]
+}
+
+#[cfg(test)]
+pub fn bytes_extern() -> Vec<u8> {
+    extern "C" {
+        #[allow(improper_ctypes)]
+        fn bytes() -> Vec<u8>;
+    }
+    unsafe { bytes() }
+}
+
 #[cfg(test)]
 mod tests {
     use super::VecZeroed;
+    use super::TERA;
     use alloc::vec;
     use alloc::vec::Vec;
     use core::hint;
     use zerocopy::error::AllocError;
-
-    const TERA: usize = 1024 * 1024 * 1024 * 1024;
 
     #[test]
     fn extend() -> Result<(), AllocError> {
@@ -102,7 +124,17 @@ mod tests {
         // flags:
         let mut u8s = if false { hint::black_box(u8s) } else { u8s };
         // Linux with default VM overcommit enabled, and with transparent huge pages turned off,
-        // handles this well:
+        // handles this well.
+        // ```
+        // cat /sys/kernel/mm/transparent_hugepage/enabled
+        // always madvise [never]
+        // ```
+        // or:
+        // ```
+        // cat /sys/kernel/mm/transparent_hugepage/enabled
+        // always [madvise] never
+        // ```
+
         u8s[TERA - 1] = 1;
 
         // The following runs out of memory - even without black_box:
@@ -114,5 +146,14 @@ mod tests {
 
         // BUT, the following works well:
         hint::black_box(u8s[TERA - 1]);
+    }
+
+    #[test]
+    fn from_extern() {
+        use super::bytes_extern;
+
+        // Calling through FFI doesn't change anything.
+        let bytes = bytes_extern();
+        hint::black_box(bytes[TERA - 1]);
     }
 }
