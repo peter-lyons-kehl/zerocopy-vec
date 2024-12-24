@@ -1,0 +1,17 @@
+[package]
+name = "zerocopy-vec"
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.65.0"
+
+authors = ["Peter Lyons Kehl<peter.kehl@gmail.com>"]
+description = "Zerocopy-compatible Vec extension trait and blanket impl, providing extend_zeroed, insert_zeroed and new_zeroed."
+categories = ["embedded", "encoding", "no-std", "parsing", "rust-patterns"]
+keywords = ["cast", "convert", "transmute", "transmutation", "type-punning"]
+license = "BSD-2-Clause OR Apache-2.0 OR MIT"
+
+[dependencies]
+zerocopy = {version = "0.8.*", features = ["alloc"] }
+
+[profile.test]
+opt-level = 3
