@@ -57,22 +57,25 @@ where
     }
 }
 
-// NOT fallible - but Linux VM overcommit-friendly
+// NOT fallible - but Linux VM overcommit-friendly.
+#[macro_export]
 macro_rules! vec_zeroed {
-    ($T: ty; $len_t: expr) => {
+    ($T: ty; $GIVEN_LEN_T: expr) => {
         {
-            const align: ::core::primitive::usize = ::core::mem::align_of::<$T>();
-            const size_t: ::core::primitive::usize = ::core::mem::size_of::<$T>();
+            // LEN_T exists to make errors clearer (if the user-provided expression is not const).
+            const LEN_T: usize = $GIVEN_LEN_T;
+            const ALIGN: ::core::primitive::usize = ::core::mem::align_of::<$T>();
+            const SIZE_T: ::core::primitive::usize = ::core::mem::size_of::<$T>();
 
-            const size_primitive: ::core::primitive::usize = size_t/align * $len_t;
+            const SIZE_PRIMITIVE: ::core::primitive::usize = SIZE_T/ALIGN * LEN_T;
             unsafe {
-                match(align) {
-                    0  => ::core::mem::transmute::<Vec<()>, Vec<$T>>(::alloc::vec![(); size_primitive]), // Unsure if this is lazily allocated by OS - do TEST!
-                    1  => ::core::mem::transmute::<Vec<u8>, Vec<$T>>(::alloc::vec![0u8; size_primitive]),
-                    2  => ::core::mem::transmute::<Vec<u16>, Vec<$T>>(::alloc::vec![0u16; size_primitive]),
-                    4  => ::core::mem::transmute::<Vec<u32>, Vec<$T>>(::alloc::vec![0u32; size_primitive]),
-                    8  => ::core::mem::transmute::<Vec<u64>, Vec<$T>>(::alloc::vec![0u64; size_primitive]),
-                    16 => ::core::mem::transmute::<Vec<u128>, Vec<$T>>(::alloc::vec![0u128; size_primitive]),
+                match(ALIGN) {
+                    0  => ::core::mem::transmute::<Vec<()>, Vec<$T>>(::alloc::vec![(); SIZE_PRIMITIVE]), // Unsure if this is lazily allocated by OS - do TEST!
+                    1  => ::core::mem::transmute::<Vec<u8>, Vec<$T>>(::alloc::vec![0u8; SIZE_PRIMITIVE]),
+                    2  => ::core::mem::transmute::<Vec<u16>, Vec<$T>>(::alloc::vec![0u16; SIZE_PRIMITIVE]),
+                    4  => ::core::mem::transmute::<Vec<u32>, Vec<$T>>(::alloc::vec![0u32; SIZE_PRIMITIVE]),
+                    8  => ::core::mem::transmute::<Vec<u64>, Vec<$T>>(::alloc::vec![0u64; SIZE_PRIMITIVE]),
+                    16 => ::core::mem::transmute::<Vec<u128>, Vec<$T>>(::alloc::vec![0u128; SIZE_PRIMITIVE]),
                     other => unreachable!("Unsupported alignment: {}", other)
                 }
             }
@@ -112,19 +115,98 @@ mod tests {
     use alloc::vec;
     use alloc::vec::Vec;
     use core::hint;
-    use zerocopy::error::AllocError;
+    use zerocopy::{error::AllocError, FromZeros};
 
     #[test]
-    fn extend() -> Result<(), AllocError> {
+    fn extend_zero_by_zero() -> Result<(), AllocError> {
+        let mut u8s = vec![0u8, 0u8];
+        u8s.extend_zeroed(TERA)?;
+        Ok(())
+    }
+
+    #[test]
+    fn extend_zero_by_zero_original() -> Result<(), AllocError> {
+        let mut u8s = vec![0u8, 0u8];
+        FromZeros::extend_vec_zeroed(&mut u8s, TERA)?;
+        Ok(())
+    }
+    //-----
+    #[test]
+    fn extend_zero_bulk() -> Result<(), AllocError> {
+        let mut u8s = vec![0u8; 2];
+        u8s.extend_zeroed(TERA)?;
+        Ok(())
+    }
+
+    #[test]
+    fn extend_zero_bulk_original() -> Result<(), AllocError> {
+        let mut u8s = vec![0u8; 2];
+        FromZeros::extend_vec_zeroed(&mut u8s, TERA)?;
+        Ok(())
+    }
+    //------
+
+    #[test]
+    fn extend_zero_default_bulk_original() -> Result<(), AllocError> {
+        let mut u8s: Vec<u8> = vec![Default::default(); 2];
+        FromZeros::extend_vec_zeroed(&mut u8s, TERA)?;
+        Ok(())
+    }
+    //-----
+
+    #[test]
+    fn extend_zeros_new_vec_both_original() -> Result<(), AllocError> {
+        let mut u8s: Vec<u8> = u8::new_vec_zeroed(if true {
+            0 // small non-zero size fails below, too
+        } else {
+            TERA
+        })?;
+        FromZeros::extend_vec_zeroed(&mut u8s, TERA)?;
+        Ok(())
+    }
+
+    //-----
+    #[test]
+    fn extend_nonzeros() -> Result<(), AllocError> {
         let mut u8s = vec![0u8, 1u8, 2u8];
         u8s.extend_zeroed(TERA)?;
         Ok(())
     }
 
     #[test]
-    fn insert() -> Result<(), AllocError> {
+    fn extend_nonzeros_original() -> Result<(), AllocError> {
+        let mut u8s = vec![0u8, 1u8, 2u8];
+        FromZeros::extend_vec_zeroed(&mut u8s, TERA)?;
+        Ok(())
+    }
+    //---------
+
+    #[test]
+    fn insert_nonzeros() -> Result<(), AllocError> {
         let mut u8s = vec![0u8, 1u8, 2u8];
         u8s.insert_zeroed(3, TERA)?;
+        Ok(())
+    }
+
+    #[test]
+    fn insert_nonzeroed_original() -> Result<(), AllocError> {
+        let mut u8s = vec![0u8, 1u8, 2u8];
+        FromZeros::insert_vec_zeroed(&mut u8s, 3, TERA)?;
+        Ok(())
+    }
+    //-------
+
+    #[test]
+    fn insert_zeros_new_vec_both_original() -> Result<(), AllocError> {
+        let mut u8s: Vec<u8> = u8::new_vec_zeroed(TERA)?;
+        FromZeros::insert_vec_zeroed(&mut u8s, TERA - 1, TERA)?;
+        Ok(())
+    }
+    //-------
+
+    #[test]
+    fn new_original() -> Result<(), AllocError> {
+        let mut u8s = u8::new_vec_zeroed(TERA)?;
         Ok(())
     }
 
