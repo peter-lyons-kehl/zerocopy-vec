@@ -208,7 +208,40 @@ mod tests {
 
     #[test]
     fn new_original() -> Result<(), AllocError> {
-        let mut u8s = u8::new_vec_zeroed(TERA)?;
+        extern crate std;
+        use std::println;
+
+        let mut u8s = vec![0u8; TERA];
+        u8s[TERA - 1] = 1;
+        hint::black_box(u8s[TERA - 1]);
+        // We DO get to this point - at least when optimized.
+        if false {
+            return Ok(());
+        }
+        // Either of the following fails.
+        if false {
+            hint::black_box(u8s[hint::black_box(TERA - 1)]);
+        }
+        if true {
+            println!(
+                "Modified last byte of vec!-generated long Vec: {}",
+                u8s[TERA - 1]
+            );
+        }
+        if true {
+            return Ok(());
+        }
+        //---
+
+        let u8s = u8::new_vec_zeroed(TERA)?;
+
+        let u8s = if false {
+            // This fails:
+            hint::black_box(u8s)
+        } else {
+            u8s
+        };
+        //u8s[TERA-1] = 1;
         Ok(())
     }
 
